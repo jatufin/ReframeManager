@@ -53,27 +53,27 @@ NOTE! The timestap in the reframe file name is created from the creation time of
 The object of this project is to automate these prosedures and create an intuitive user interface for handling of these files.
 
 
-1. Design
+1. Internal design
 
 - Target platform: MacOS 10.15 (Catalina) or newer
 - Programming language: Swift
 - GUI framework: SwiftUI
-- Also command line tools should be available
+- Optional: Command line tools
 - Sandboxed: The application should be run from application bundle sandbox, so it cane be distributed safely
 - Minimum configuration: Theres should be minimum amount of configuration settings or files
 - Target: Directories. The application opens and manages directories, not signle video files or file groups
 
 1.1. Default directories and their acronyms from this on:
 
-Working directory: CWD
+Working directory: WORKDIR
 Default: ~/Documents
 
-Player bundle: Playerdir
+Player bundle: PLAYERDIR
 Default: ~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support$
 
 If application is run sandboxed, these directories must be opened by user with a file dialog. The access rights will be valid until the application is shut down.
 
-1.2. Data structure:
+1.2. Data structures:
 
 The application reads all the file names and properties and creates internal data structure based from their names, sizes and time stamps.
 Only files with THM, 360, LRV or reframe extensions are recognized, all others all dismissed.
@@ -118,9 +118,34 @@ video360Files: [String:Video360File]
 Main structure for a directory is:
 
 struct Directory {
-    var directoryURL: URL
+    var directoryURL: URL = WORKDIR
     var video360Files: [String:Video360Files]
 }
+
+The previously opened dierctories should be stored in the memory, so the application main model is:
+
+struct ReframeManagerModel {
+    var playerDirectory: String = PLAYERDIR
+    var directories: [Directory]
+}
+
+1.3. Operations
+
+Following operations should be available:
+- Open a new directory
+- Refresh current directory
+- Select video
+- Create new reframe file
+- Delete a reframe file
+- Select an existing reframe file
+- Launch GoPro Player with LRV file (low definition) with selected reframe file
+- Launch GoPro Player with 360 file (high definition) with selected reframe file
+
+1.4 Syncronization
+
+Because the GoPro Player operates and creates reframe files in the PLAYERDIR directory, the Reframe Manager should be suspended when GoPro Player is running. For this purpose processes running in the computer will be polled, and if the Player is running, user will be notified and the application turned to supended mode until the Player quits.
+
+
 
 
 
