@@ -13,12 +13,13 @@ There is workaround for this: The reframing files in the application bundle fold
 Example:
 
 After extracting a 360 degree video from the camera, we have three files:
+NOTE: The date is creation date, not modification or access time. (command: $ls -lUT)
 
-     size date         name
------------------------------------
-128586228 11 Elo 18:27 GS010069.360 <- 360 degree HVEC encoded high definition video
-  5575817 11 Elo 18:27 GS010069.LRV <- 360 degree low resolution video
-    92163 11 Elo 18:26 GS010069.THM <- Still image preview
+     size date            name
+--------- --------------- ---------
+128586228 11 Elo 18:26:58 GS010069.360 <- 360 degree HVEC encoded high definition video
+  5575817 11 Elo 18:26:58 GS010069.LRV <- 360 degree low resolution video
+    92163 11 Elo 18:26:58 GS010069.THM <- Still image preview
 
 If we open LRV and 360 files in GoPro Player and do minimum reframing, creating first keyframe, and look at the bundle directory:
 
@@ -46,6 +47,8 @@ The same method can be used to have several reframings for the same video file: 
 
 $cp -f 2020-08-11-18-26-58-000+0300-128586228.reframe MyFirstVersion.reframe
 $cp -f MyFirstVersion.reframe 2020-08-11-18-26-58-000+0300-128586228.reframe
+
+NOTE! The timestap in the reframe file name is created from the creation time of the video file saved in the file system, not from some magic numbers inside the video file itself.
 
 The object of this project is to automate these prosedures and create an intuitive user interface for handling of these files.
 
