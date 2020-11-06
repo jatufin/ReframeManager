@@ -53,3 +53,74 @@ NOTE! The timestap in the reframe file name is created from the creation time of
 The object of this project is to automate these prosedures and create an intuitive user interface for handling of these files.
 
 
+1. Design
+
+- Target platform: MacOS 10.15 (Catalina) or newer
+- Programming language: Swift
+- GUI framework: SwiftUI
+- Also command line tools should be available
+- Sandboxed: The application should be run from application bundle sandbox, so it cane be distributed safely
+- Minimum configuration: Theres should be minimum amount of configuration settings or files
+- Target: Directories. The application opens and manages directories, not signle video files or file groups
+
+1.1. Default directories and their acronyms from this on:
+
+Working directory: CWD
+Default: ~/Documents
+
+Player bundle: Playerdir
+Default: ~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support$
+
+If application is run sandboxed, these directories must be opened by user with a file dialog. The access rights will be valid until the application is shut down.
+
+1.2. Data structure:
+
+The application reads all the file names and properties and creates internal data structure based from their names, sizes and time stamps.
+Only files with THM, 360, LRV or reframe extensions are recognized, all others all dismissed.
+All information the application needs is saved in file names and properties.
+
+A record for a video should be as follows:
+
+struct Video360 {
+    var name: String
+    
+    var previewImage: PreviewImage?     // .THM file extension
+    var highDef360File: Video360File?   // .360 file extension
+    var lowDef360File: Video360File?    // .LRV file extension
+    
+    var reframeFiles: [ReframeFile]     // .reframe file extension
+}
+
+struct PreviewImage {
+    var fileName: String
+}
+
+struct Video360File {
+    var fileName: String
+    var size: Int
+    var creationTime: Date()
+    var reframeFileName: String { createReframeFileName() }
+}
+
+struct reframeFiles {
+    var videoName: String       // This is the name found in the Video360 record
+    var reframeName: String     // This is the name give by user to this particular reframing
+    var fileName: String { "\(videoName).\(reframeName).reframe" }
+        // The reframe name is store between first and last dots in the actual file name
+        // Example: The original 360 video file is GS010069.360 and user has named the reframe as "My Reframe":
+        // "GS010069.My Reframe.reframe"
+}
+
+When reading the directory, any THM, 360 or LRV file ancountered either creates a new record based on its name, or it is incrporated to the existing record if it is found by name. The records are stored in a dictionary, where the video name acts as key:
+
+video360Files: [String:Video360File]
+
+Main structure for a directory is:
+
+struct Directory {
+    var directoryURL: URL
+    var video360Files: [String:Video360Files]
+}
+
+
+
