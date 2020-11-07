@@ -84,11 +84,11 @@ A record for a video should be as follows:
 struct Video360 {
     var name: String
     
-    var previewImage: PreviewImage?     // .THM file extension
-    var highDef360File: Video360File?   // .360 file extension
-    var lowDef360File: Video360File?    // .LRV file extension
+    var previewImage: PreviewImage? // .THM file extension
+    var highDef360File: Video360File?       // .360 file extension
+    var lowDef360File: Video360File?        // .LRV file extension
     
-    var reframeFiles: [ReframeFile]     // .reframe file extension
+    var reframeFiles: [ReframeFile]         // .reframe file extension
 }
 
 struct PreviewImage {
@@ -98,7 +98,7 @@ struct PreviewImage {
 struct Video360File {
     var fileName: String
     var size: Int
-    var creationTime: Date()
+    var creationTime: Date
     var reframeFileName: String { createReframeFileName() }
 }
 
@@ -111,15 +111,13 @@ struct reframeFiles {
         // "GS010069.My Reframe.reframe"
 }
 
-When reading the directory, any THM, 360 or LRV file ancountered either creates a new record based on its name, or it is incrporated to the existing record if it is found by name. The records are stored in a dictionary, where the video name acts as key:
-
-video360Files: [String:Video360File]
+When reading the directory, any THM, 360 or LRV file ancountered either creates a new record based on its name, or it is incorporated to the existing record if it is found by name. The records are stored in a dictionary, where the video name acts as key.
 
 Main structure for a directory is:
 
 struct Directory {
-    var directoryURL: URL = WORKDIR
-    var video360Files: [String:Video360Files]
+    var url: URL = WORKDIR
+    var videos: [String:Video360]
 }
 
 The previously opened dierctories should be stored in the memory, so the application main model is:
