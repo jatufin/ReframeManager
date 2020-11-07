@@ -53,7 +53,7 @@ NOTE! The timestap in the reframe file name is created from the creation time of
 The object of this project is to automate these prosedures and create an intuitive user interface for handling of these files.
 
 
-1. Internal design
+1 Internal design
 
 - Target platform: MacOS 10.15 (Catalina) or newer
 - Programming language: Swift
@@ -63,17 +63,17 @@ The object of this project is to automate these prosedures and create an intuiti
 - Minimum configuration: Theres should be minimum amount of configuration settings or files
 - Target: Directories. The application opens and manages directories, not signle video files or file groups
 
-1.1. Default directories and their acronyms from this on:
+1.1 Default directories and their acronyms from this on:
 
 Working directory: WORKDIR
 Default: ~/Documents
 
 Player bundle: PLAYERDIR
-Default: ~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support$
+Default: ~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support
 
 If application is run sandboxed, these directories must be opened by user with a file dialog. The access rights will be valid until the application is shut down.
 
-1.2. Data structures:
+1.2 Data structures:
 
 The application reads all the file names and properties and creates internal data structure based from their names, sizes and time stamps.
 Only files with THM, 360, LRV or reframe extensions are recognized, all others all dismissed.
@@ -129,7 +129,7 @@ struct ReframeManagerModel {
     var directories: [Directory]
 }
 
-1.3. Operations
+1.3 Operations
 
 Following operations should be available:
 - Open a new directory
@@ -145,7 +145,69 @@ Following operations should be available:
 
 Because the GoPro Player operates and creates reframe files in the PLAYERDIR directory, the Reframe Manager should be suspended when GoPro Player is running. For this purpose processes running in the computer will be polled, and if the Player is running, user will be notified and the application turned to supended mode until the Player quits.
 
+1.5 When user has selected a video, and a reframe, she can launch GoPro Player for either high resolution or low resolution video file:
+
+- Based on the video file, (size and time stamp) the selected reframe file is copied from the workin directory to the player directory.
+
+Example:
+
+cp WORKDIR/My video.First Reframe.reframe PLAYERDIR/2020-08-11-18-26-58-000+0300-128586228.reframe
+
+1.6 Example
+
+File names in a working directory:
+
+GS010069.360
+GS010069.LRV
+GS010069.THM
+GS010069.My Reframe.reframe
+GS010070.360
+GS010070.LRV
+GS010070.THM
+GS010070.Trying to reframe.reframe
+GS010070.Second attempt.reframe
+
+1.7 Existing reframes
+
+The application should be aware of the already existing reframe files in the PLAYERDIR. It should check if there exists reframe files which match to the video files in the working directory, these should be copied and given default names in the work directory.
 
 
+2 Graphical User interface
 
+2.1 Main components
 
+There are three main components in the user interface:
+- List of videos in the workinf directory
+- Properties of a video
+- List of reframe files of a video
+
+Additionally we can have workinf directory and player directory paths shown on top of the window.
+
+2.2 Visuals
+
++-----------------------------------------------------------------------------------------+
+|Directory: ~/Documents                                                                   |
+|Playerdir: ~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support  |
++---------------------------------------------+-------------------------------------------+
+| First Video                                 |                                           |
+| My Second Video <selected                   |          My Second Video                  |
+| And third                                   |          [preview image]                  |
+|                                             |                                           |
+|                                             |   High-definition (360) [Edit button]     |
+|                                             |   Low-definition (LRV)  [Edit button]     |
+|                                             |                                           |
+|                                             +-------------------------------------------+
+|                                             | my first reframe attempt                  |
+|                                             | my second reframe attempt                 |
+|                                             | my third reframe attempt <selected        |
+|                                             | my nth reframe attempt                    |
+|                                             |                                           |
+|                                             |[+/-]                                      |
++---------------------------------------------+-------------------------------------------+
+
+When a video is selected from the left side list, right side information opens.
+High and low definition choises are shown, if corresponding files (360 and LRV extensions)
+are available. When user selects an reframe, edit buttons will activate.
+
+If user presses edit button, the GoPro Player is opened for the corresponding video file.
+Before that however, the reframe file is copied to the Playerdir directory.
