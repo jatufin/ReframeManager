@@ -12,7 +12,7 @@
 		4FE342662555F4C6002AF61F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4FE342652555F4C6002AF61F /* Assets.xcassets */; };
 		4FE342692555F4C6002AF61F /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4FE342682555F4C6002AF61F /* Preview Assets.xcassets */; };
 		4FE3426C2555F4C6002AF61F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4FE3426A2555F4C6002AF61F /* Main.storyboard */; };
-		4FE342762555F536002AF61F /* ReadMe.txt in Resources */ = {isa = PBXBuildFile; fileRef = 4FE342752555F536002AF61F /* ReadMe.txt */; };
+		4FE342762555F536002AF61F /* DesignDraft.txt in Resources */ = {isa = PBXBuildFile; fileRef = 4FE342752555F536002AF61F /* DesignDraft.txt */; };
 		4FE3427925562F51002AF61F /* ReframeManagerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE3427825562F51002AF61F /* ReframeManagerModel.swift */; };
 /* End PBXBuildFile section */
 
@@ -25,7 +25,7 @@
 		4FE3426B2555F4C6002AF61F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		4FE3426D2555F4C6002AF61F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4FE3426E2555F4C6002AF61F /* ReframeManager.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ReframeManager.entitlements; sourceTree = "<group>"; };
-		4FE342752555F536002AF61F /* ReadMe.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ReadMe.txt; sourceTree = "<group>"; };
+		4FE342752555F536002AF61F /* DesignDraft.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = DesignDraft.txt; sourceTree = "<group>"; };
 		4FE3427825562F51002AF61F /* ReframeManagerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframeManagerModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -83,7 +83,7 @@
 		4FE342742555F4EB002AF61F /* docs */ = {
 			isa = PBXGroup;
 			children = (
-				4FE342752555F536002AF61F /* ReadMe.txt */,
+				4FE342752555F536002AF61F /* DesignDraft.txt */,
 			);
 			path = docs;
 			sourceTree = "<group>";
@@ -156,7 +156,7 @@
 			files = (
 				4FE3426C2555F4C6002AF61F /* Main.storyboard in Resources */,
 				4FE342692555F4C6002AF61F /* Preview Assets.xcassets in Resources */,
-				4FE342762555F536002AF61F /* ReadMe.txt in Resources */,
+				4FE342762555F536002AF61F /* DesignDraft.txt in Resources */,
 				4FE342662555F4C6002AF61F /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

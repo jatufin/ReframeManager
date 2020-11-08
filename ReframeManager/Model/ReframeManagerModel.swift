@@ -38,7 +38,7 @@ struct Video360File {
     var creationTimeStamp: String {
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd-HH-mm-ss-000ZZZ"
-        return df.string(from: fileItem.creationTime)
+        return df.string(from: fileItem.creationDate)
     }
     
     // This reframe file name is used by the Player app
@@ -84,7 +84,6 @@ struct Video360 {
         default:
             otherFiles.append(fileItem)
         }
-        
     }
 }
 
@@ -97,6 +96,8 @@ struct Directory {
         self.url = URL(fileURLWithPath: path)
     }
     
+    // If error is encountered reading directory contents
+    // the value of readable member variable is se to false
     private mutating func loadDir() -> [FileItem] {
         var fileItems = [FileItem]()
         let fileManager = FileManager.default
