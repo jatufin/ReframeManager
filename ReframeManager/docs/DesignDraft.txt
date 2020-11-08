@@ -209,3 +209,20 @@ are available. When user selects an reframe, edit buttons will activate.
 
 If user presses edit button, the GoPro Player is opened for the corresponding video file.
 Before that however, the reframe file is copied to the Playerdir directory.
+
+2.3 SiftUI Views
+
+HeaderView
+- VwsPathView
+- PplayerDirPathView
+
+DirectoryView
+- VideoListView
+
+VideoView
+- PreviewImage
+- VideoFileView
+
+PreviewView
+- PreviewListView
+

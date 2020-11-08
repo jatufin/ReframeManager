@@ -21,13 +21,16 @@ struct FileItem {
     var modificationDate: Date
     var type: String
     
+    // Beginning of the file name, before first dot
     var videoName: String {
         let a = name.components(separatedBy: ".")
         return a[0]
     }
     
+    // End of the file name, after the last dot
     var fileExtension: String {
         let a = name.components(separatedBy: ".")
+        if a.count == 0 { return "" }
         return a[a.count - 1]
     }
 }
@@ -71,7 +74,7 @@ struct Video360 {
     var lowDef360File: Video360File?
     
     var reframeFiles = [ReframeFile]()
-    var otherFiles = [FileItem]()
+    var otherFiles = [FileItem]()       // normally this should remain empty
     
     mutating func addFile(fileItem: FileItem) {
         switch fileItem.fileExtension {
@@ -89,13 +92,24 @@ struct Video360 {
 
 struct Directory {
     var url: URL
-    var readable: Bool = true
+    var readable: Bool = true // if there are issues reading directory listing, this is set to false
     var videos = [String : Video360]()
     
     init(path: String) {
         self.url = URL(fileURLWithPath: path)
     }
     
+    mutating func loadDirectory() {
+        let fileItems = loadDir()
+        
+        for fileItem in fileItems {
+            if videos[fileItem.videoName] == nil {
+                videos[fileItem.videoName] = Video360(name: fileItem.videoName)
+            }
+            
+            videos[fileItem.videoName]?.addFile(fileItem: fileItem)
+        }
+    }
     // If error is encountered reading directory contents
     // the value of readable member variable is se to false
     private mutating func loadDir() -> [FileItem] {
@@ -136,7 +150,4 @@ struct Directory {
             type: type
         )
     }
-    
-    
-    
 }
