@@ -7,6 +7,11 @@
 //
 
 import Foundation
+import Combine
+
+
+let WORKDIR = "~/Documents/"
+let PLAYERDIR = "~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support/"
 
 struct FileExtensions {
     static let highDef = "360"
@@ -90,16 +95,31 @@ struct Video360 {
     }
 }
 
-struct Directory {
-    var url: URL
-    var readable: Bool = true // if there are issues reading directory listing, this is set to false
-    var videos = [String : Video360]()
+class Directory: ObservableObject {
+    @Published var url: URL
+    @Published var playerDirURL: URL
+    @Published var videos = [String : Video360]()
     
-    init(path: String) {
-        self.url = URL(fileURLWithPath: path)
+    var readable: Bool = true // if there are issues reading directory listing, this is set to false
+
+    init(path: String, playerDirPath: String) {
+        print("Init path: \(path)")
+        print("Init payerdir: \(playerDirPath)")
+        self.url = URL(fileURLWithPath: NSString(string: path).expandingTildeInPath)
+        self.playerDirURL = URL(fileURLWithPath: NSString(string: playerDirPath).expandingTildeInPath)
+        print("URL path: \(self.url)")
+        print("Init payerdir: \(self.playerDirURL)")
+    }
+ 
+    convenience init(path: String) {
+        self.init(path: path, playerDirPath: PLAYERDIR)
     }
     
-    mutating func loadDirectory() {
+    convenience init() {
+        self.init(path: WORKDIR, playerDirPath: PLAYERDIR)
+    }
+    
+    func loadDirectory() {
         let fileItems = loadDir()
         
         for fileItem in fileItems {
@@ -112,7 +132,7 @@ struct Directory {
     }
     // If error is encountered reading directory contents
     // the value of readable member variable is se to false
-    private mutating func loadDir() -> [FileItem] {
+    private func loadDir() -> [FileItem] {
         var fileItems = [FileItem]()
         let fileManager = FileManager.default
         

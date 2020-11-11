@@ -9,15 +9,62 @@
 import SwiftUI
 
 struct ContentView: View {
+    @ObservedObject var directory: Directory
+    
     var body: some View {
-        Text("Hello, World!")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack {
+            DirectorySelectorView(directory: self.directory)
+            Spacer()
+        }
     }
 }
 
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        ContentView(directory: Directory())
+    }
+}
+
+struct VideoListView: View {
+    @ObservedObject var directory: Directory
+    
+    var body: some View {
+        VStack {
+            Section(header: Text(directory.url.lastPathComponent)) {
+                NavigationView {
+                    List(self.directory.videos.values, id: \.self) { video in
+                        Text(video.name)
+                        /*
+                        NavigationLink(destination: VideoInfoView(video: video)) {
+                            VideoRowView(video: video)
+                        }
+                        */
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct VideoRowView: View {
+    var video: Video360
+    var body: some View {
+        HStack {
+            Text(video.name)
+        }
+    }
+    
+}
+struct VideoInfoView: View {
+    var video: Video360
+    
+    var body: some View {
+        VStack {
+            Text(video.name)
+            Text(video.previewImage?.name ?? "Not found")
+            Text(video.highDef360File?.fileItem.name ?? "Not found")
+            Text(video.lowDef360File?.fileItem.name ?? "Not found")
+        }
     }
 }
