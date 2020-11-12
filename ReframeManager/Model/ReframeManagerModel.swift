@@ -13,11 +13,12 @@ import Combine
 let WORKDIR = "~/Documents/"
 let PLAYERDIR = "~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support/"
 
-struct FileExtensions {
-    static let highDef = "360"
-    static let lowDef = "LRV"
-    static let reframe = "reframe"
-}
+let FileExtensions = [
+    "highDef" : "360",
+    "lowDef" : "LRV",
+    "preview" : "THM",
+    "reframe" : "reframe"
+]
 
 struct FileItem {
     var name: String
@@ -51,13 +52,23 @@ struct Video360File {
     
     // This reframe file name is used by the Player app
     var reframeEditFileName: String {
-        "\(creationTimeStamp)-\(fileItem.size).\(FileExtensions.reframe)"
+        let ext = FileExtensions["reframe"] ?? ""
+        return "\(creationTimeStamp)-\(fileItem.size).\(ext)"
     }
 }
 
 struct ReframeFile  {
     var fileItem: FileItem
     
+    var isKnownType: Bool {
+        for(_, value) in FileExtensions {
+            if value == fileItem.fileExtension {
+                return true
+            }
+        }
+        
+        return false
+    }
     // Part of the file name between the first and last dots
     var reframeName: String {
         let a = fileItem.name.components(separatedBy: ".")
@@ -83,11 +94,13 @@ struct Video360: Hashable {
     
     mutating func addFile(fileItem: FileItem) {
         switch fileItem.fileExtension {
-            case FileExtensions.highDef:
+            case FileExtensions["highDef"]:
                 highDef360File = Video360File(fileItem: fileItem)
-            case FileExtensions.lowDef:
+            case FileExtensions["lowDef"]:
                 lowDef360File = Video360File(fileItem: fileItem)
-            case FileExtensions.reframe:
+            case FileExtensions["preview"]:
+                previewImage = fileItem
+            case FileExtensions["reframe"]:
                 reframeFiles.append(ReframeFile(fileItem: fileItem))
         default:
             otherFiles.append(fileItem)
@@ -111,12 +124,8 @@ class Directory: ObservableObject {
     var readable: Bool = true // if there are issues reading directory listing, this is set to false
 
     init(path: String, playerDirPath: String) {
-        print("Init path: \(path)")
-        print("Init payerdir: \(playerDirPath)")
         self.url = URL(fileURLWithPath: NSString(string: path).expandingTildeInPath)
         self.playerDirURL = URL(fileURLWithPath: NSString(string: playerDirPath).expandingTildeInPath)
-        print("URL path: \(self.url)")
-        print("Init payerdir: \(self.playerDirURL)")
     }
  
     convenience init(path: String) {
@@ -131,6 +140,9 @@ class Directory: ObservableObject {
         let fileItems = loadDir()
         
         for fileItem in fileItems {
+
+            print("fileItem: \(fileItem.name)")
+
             if videoIndexByName(name: fileItem.videoName) == nil {
                 videos.append(Video360(name: fileItem.videoName))
             }

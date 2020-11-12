@@ -15,6 +15,7 @@ struct ContentView: View {
         VStack {
             DirectorySelectorView(directory: self.directory)
             Spacer()
+            VideoListView(directory: directory)
         }
     }
 }

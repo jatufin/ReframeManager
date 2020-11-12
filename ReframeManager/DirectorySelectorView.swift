@@ -23,12 +23,12 @@ struct DirectorySelectorView: View {
                 Spacer()
                 Button(action: openPlayerDir) { Text("Open") }
             }
-            Spacer()
         }
     }
     
     func openWorkDir() {
         directory.url = selectDirectory(current: directory.url)
+        directory.loadDirectory()
     }
      
     func openPlayerDir() {
