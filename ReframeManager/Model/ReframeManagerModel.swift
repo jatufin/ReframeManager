@@ -98,7 +98,7 @@ struct Video360 {
 class Directory: ObservableObject {
     @Published var url: URL
     @Published var playerDirURL: URL
-    @Published var videos = [String : Video360]()
+    @Published var videos = [Video360]()
     
     var readable: Bool = true // if there are issues reading directory listing, this is set to false
 
@@ -123,13 +123,24 @@ class Directory: ObservableObject {
         let fileItems = loadDir()
         
         for fileItem in fileItems {
-            if videos[fileItem.videoName] == nil {
-                videos[fileItem.videoName] = Video360(name: fileItem.videoName)
+            if videoIndexByName(name: fileItem.videoName) == nil {
+                videos.append(Video360(name: fileItem.videoName))
             }
             
-            videos[fileItem.videoName]?.addFile(fileItem: fileItem)
+            let i = videoIndexByName(name: fileItem.videoName)
+            videos[i!].addFile(fileItem: fileItem)
         }
     }
+    
+    private func videoIndexByName(name: String) -> Int? {
+        for (index, video) in videos.enumerated() {
+            if video.name == name {
+                return index
+            }
+        }
+        return nil
+    }
+    
     // If error is encountered reading directory contents
     // the value of readable member variable is se to false
     private func loadDir() -> [FileItem] {
