@@ -71,7 +71,7 @@ struct ReframeFile  {
     }
 }
 
-struct Video360 {
+struct Video360: Hashable {
     var name: String
     
     var previewImage: FileItem?
@@ -92,6 +92,14 @@ struct Video360 {
         default:
             otherFiles.append(fileItem)
         }
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+    }
+    
+    static func == (lhs: Video360, rhs: Video360) -> Bool {
+        return lhs.name == rhs.name
     }
 }
 

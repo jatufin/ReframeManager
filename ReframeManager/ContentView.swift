@@ -33,13 +33,13 @@ struct VideoListView: View {
         VStack {
             Section(header: Text(directory.url.lastPathComponent)) {
                 NavigationView {
-                    List(self.directory.videos.values, id: \.self) { video in
-                        Text(video.name)
-                        /*
+                    List(directory.videos, id: \.self) { video in
+                        //Text(video.name)
+                        
                         NavigationLink(destination: VideoInfoView(video: video)) {
                             VideoRowView(video: video)
                         }
-                        */
+                        
                     }
                 }
             }
