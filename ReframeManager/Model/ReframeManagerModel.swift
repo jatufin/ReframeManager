@@ -10,8 +10,7 @@ import Foundation
 import Combine
 
 
-let WORKDIR = "~/Documents/"
-let PLAYERDIR = "~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support/"
+
 
 let FileExtensions = [
     "highDef" : "360",
@@ -117,8 +116,11 @@ struct Video360: Hashable {
 }
 
 class Directory: ObservableObject {
-    @Published var url: URL
-    @Published var playerDirURL: URL
+    static let DEFAULT_WORKDIR = "~/Documents/"
+    static let DEFAULT_PLAYERDIR = "~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support/"
+    
+    @Published var url: URL? { didSet { loadDirectory() }}
+    @Published var playerDirURL: URL?
     @Published var videos = [Video360]()
     
     var readable: Bool = true // if there are issues reading directory listing, this is set to false
@@ -127,14 +129,8 @@ class Directory: ObservableObject {
         self.url = URL(fileURLWithPath: NSString(string: path).expandingTildeInPath)
         self.playerDirURL = URL(fileURLWithPath: NSString(string: playerDirPath).expandingTildeInPath)
     }
- 
-    convenience init(path: String) {
-        self.init(path: path, playerDirPath: PLAYERDIR)
-    }
     
-    convenience init() {
-        self.init(path: WORKDIR, playerDirPath: PLAYERDIR)
-    }
+    init() {}
     
     func loadDirectory() {
         let fileItems = loadDir()
@@ -164,11 +160,15 @@ class Directory: ObservableObject {
     // If error is encountered reading directory contents
     // the value of readable member variable is se to false
     private func loadDir() -> [FileItem] {
+        guard url != nil else {
+            return [FileItem]()
+        }
+        
         var fileItems = [FileItem]()
         let fileManager = FileManager.default
         
         do {
-            let files = try fileManager.contentsOfDirectory(atPath: url.path)
+            let files = try fileManager.contentsOfDirectory(atPath: url!.path)
             
             for file in files {
                 let fileItem = try getFileInfo(file: file, fileManager: fileManager)
@@ -183,7 +183,7 @@ class Directory: ObservableObject {
     }
     
     private func getFileInfo(file: String, fileManager: FileManager) throws -> FileItem {
-        var fileURL = self.url
+        var fileURL = self.url!
         fileURL.appendPathComponent(file)
         
         let attributes = try fileManager.attributesOfItem(atPath: fileURL.path)

@@ -14,12 +14,12 @@ struct DirectorySelectorView: View {
     var body: some View {
         VStack {
             HStack {
-                Text(directory.url.path)
+                Text(directory.url?.path ?? "<Not selected>")
                 Spacer()
                 Button(action: openWorkDir) { Text("Open") }
             }
             HStack {
-                Text(directory.playerDirURL.path)
+                Text(directory.playerDirURL?.path ?? "<Not selected>")
                 Spacer()
                 Button(action: openPlayerDir) { Text("Open") }
             }
@@ -27,12 +27,23 @@ struct DirectorySelectorView: View {
     }
     
     func openWorkDir() {
-        directory.url = selectDirectory(current: directory.url)
-        directory.loadDirectory()
+        var url = directory.playerDirURL
+        
+        if url == nil {
+            url = URL(fileURLWithPath: NSString(string: Directory.DEFAULT_WORKDIR).expandingTildeInPath)
+        }
+        
+        directory.url = selectDirectory(current: url!)
     }
      
     func openPlayerDir() {
-        directory.playerDirURL = selectDirectory(current: directory.playerDirURL)
+        var url = directory.playerDirURL
+        
+        if url == nil {
+            url = URL(fileURLWithPath: NSString(string: Directory.DEFAULT_PLAYERDIR).expandingTildeInPath)
+        }
+        
+        directory.playerDirURL = selectDirectory(current: url!)
     }
      
     func selectDirectory(current: URL) -> URL {

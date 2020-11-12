@@ -32,7 +32,7 @@ struct VideoListView: View {
     
     var body: some View {
         VStack {
-            Section(header: Text(directory.url.lastPathComponent)) {
+            Section(header: Text(directory.url?.lastPathComponent ?? "<Not selected>")) {
                 NavigationView {
                     List(directory.videos, id: \.self) { video in
                         //Text(video.name)
