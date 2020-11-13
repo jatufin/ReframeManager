@@ -19,8 +19,9 @@ let FileExtensions = [
     "reframe" : "reframe"
 ]
 
-struct FileItem {
+struct FileItem: Equatable, Hashable {
     var name: String
+    var url: URL
     var size: Int
     var creationDate: Date
     var modificationDate: Date
@@ -37,6 +38,15 @@ struct FileItem {
         let a = name.components(separatedBy: ".")
         if a.count == 0 { return "" }
         return a[a.count - 1]
+    }
+    
+    var isKnownType: Bool {
+        return FileExtensions.values.contains(fileExtension)
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(size)
     }
 }
 
@@ -56,35 +66,31 @@ struct Video360File {
     }
 }
 
-struct ReframeFile  {
+struct ReframeFile: Hashable  {
     var fileItem: FileItem
     
-    var isKnownType: Bool {
-        for(_, value) in FileExtensions {
-            if value == fileItem.fileExtension {
-                return true
-            }
-        }
-        
-        return false
-    }
     // Part of the file name between the first and last dots
     var reframeName: String {
         let a = fileItem.name.components(separatedBy: ".")
         var s = ""
-        for i in 1..<a.count {
+        for i in 1..<a.count - 1 {
             if i > 1 { s += "." }
             s += a[i]
         }
         
         return s
     }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(fileItem)
+    }
 }
 
 struct Video360: Hashable {
     var name: String
     
-    var previewImage: FileItem?
+    var previewImageFile: FileItem?
+    
     var highDef360File: Video360File?
     var lowDef360File: Video360File?
     
@@ -98,8 +104,9 @@ struct Video360: Hashable {
             case FileExtensions["lowDef"]:
                 lowDef360File = Video360File(fileItem: fileItem)
             case FileExtensions["preview"]:
-                previewImage = fileItem
+                previewImageFile = fileItem
             case FileExtensions["reframe"]:
+                print("Add reframe: \(fileItem.name)")
                 reframeFiles.append(ReframeFile(fileItem: fileItem))
         default:
             otherFiles.append(fileItem)
@@ -109,21 +116,21 @@ struct Video360: Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(name)
     }
-    
+   
     static func == (lhs: Video360, rhs: Video360) -> Bool {
         return lhs.name == rhs.name
     }
 }
 
 class Directory: ObservableObject {
-    static let DEFAULT_WORKDIR = "~/Documents/"
+    static let DEFAULT_WORKDIR = "~/Documents/tmp/360Video"
     static let DEFAULT_PLAYERDIR = "~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support/"
     
     @Published var url: URL? { didSet { loadDirectory() }}
     @Published var playerDirURL: URL?
     @Published var videos = [Video360]()
     
-    var readable: Bool = true // if there are issues reading directory listing, this is set to false
+    var readable: Bool = false // Can directory be read?
 
     init(path: String, playerDirPath: String) {
         self.url = URL(fileURLWithPath: NSString(string: path).expandingTildeInPath)
@@ -133,12 +140,10 @@ class Directory: ObservableObject {
     init() {}
     
     func loadDirectory() {
+        readable = true
         let fileItems = loadDir()
         
         for fileItem in fileItems {
-
-            print("fileItem: \(fileItem.name)")
-
             if videoIndexByName(name: fileItem.videoName) == nil {
                 videos.append(Video360(name: fileItem.videoName))
             }
@@ -173,7 +178,10 @@ class Directory: ObservableObject {
             for file in files {
                 let fileItem = try getFileInfo(file: file, fileManager: fileManager)
                 
-                fileItems.append(fileItem)
+                if fileItem.isKnownType {
+                    print("Known extension: Append")
+                    fileItems.append(fileItem)
+                }
             }
         } catch {
             readable = false
@@ -195,6 +203,7 @@ class Directory: ObservableObject {
     
         return FileItem(
             name: file,
+            url: fileURL,
             size: size,
             creationDate: creationDate,
             modificationDate: modificationDate,
