@@ -9,15 +9,41 @@
 import Foundation
 import Combine
 
-
-
-
+enum ReframeManagerError: Error {
+    case FileAlreadyExists
+    case DirectoryNotFound
+    case InvalidName
+}
 let FileExtensions = [
     "highDef" : "360",
     "lowDef" : "LRV",
     "preview" : "THM",
     "reframe" : "reframe"
 ]
+
+func validName(name: String) -> Bool {
+    if name.count == 0 || name.count > 50 {
+        return false
+    }
+    
+    if name.contains("/") || name.contains("\\") {
+        return false
+    }
+
+    if name.contains(".") || name.contains("@") {
+        return false
+    }
+    
+    if name.contains("\"") || name.contains("\'") {
+        return false
+    }
+    
+    if name.contains("~") || name.contains("|") {
+        return false
+    }
+    
+    return true
+}
 
 struct FileItem: Equatable, Hashable {
     var name: String
@@ -67,6 +93,21 @@ struct Video360File {
 }
 
 struct ReframeFile: Hashable  {
+    static let REFRAME_TEMPLATE: [UInt8] = [
+            0x35, 0x0a, 0x14, 0x0a, 0x2d, 0x0d, 0x6b, 0xa6, 0x15, 0xbc, 0x08, 0xa9, 0x3d, 0x90, 0x8b, 0x1d,
+            0x57, 0xa6, 0x25, 0x3a, 0x56, 0xe8, 0x3f, 0x7f, 0x00, 0x15, 0x00, 0x00, 0x18, 0x00, 0x20, 0x04,
+            0x28, 0x00, 0x30, 0x01, 0x38, 0x00, 0x40, 0x00, 0x48, 0x00, 0x50, 0x00, 0x5d, 0x00, 0x00, 0x00,
+            0x43, 0x34, 0x00, 0x65, 0x0e, 0xc0, 0x18, 0x43, 0x20, 0x00, 0xd8, 0x80, 0x07, 0xa1, 0x80, 0x28,
+            0xa1, 0xd8, 0x30, 0x07, 0x38, 0x10, 0x40, 0x09, 0x00, 0x04
+    ]
+    static var reframeData: Data {
+        let pointer = UnsafeBufferPointer(
+            start: ReframeFile.REFRAME_TEMPLATE,
+            count: ReframeFile.REFRAME_TEMPLATE.count)
+        
+        return Data(buffer: pointer)
+    }
+    
     var fileItem: FileItem
     
     // Part of the file name between the first and last dots
@@ -86,18 +127,21 @@ struct ReframeFile: Hashable  {
     }
 }
 
-struct Video360: Hashable {
+class Video360: Hashable, ObservableObject {
     var name: String
-    
     var previewImageFile: FileItem?
     
     var highDef360File: Video360File?
     var lowDef360File: Video360File?
     
-    var reframeFiles = [ReframeFile]()
+    @Published var reframeFiles = [ReframeFile]()
     var otherFiles = [FileItem]()       // normally this should remain empty
     
-    mutating func addFile(fileItem: FileItem) {
+    init(name: String) {
+        self.name = name
+    }
+    
+    func addFile(fileItem: FileItem) {
         switch fileItem.fileExtension {
             case FileExtensions["highDef"]:
                 highDef360File = Video360File(fileItem: fileItem)
@@ -120,6 +164,40 @@ struct Video360: Hashable {
     static func == (lhs: Video360, rhs: Video360) -> Bool {
         return lhs.name == rhs.name
     }
+    
+    func reframeExists(name: String) -> Bool {
+        return reframeIndexByName(name: name) != nil
+    }
+    
+    func reframeIndexByName(name: String) -> Int? {
+        for (index, reframeFile) in reframeFiles.enumerated() {
+            if reframeFile.reframeName == name {
+                return index
+            }
+        }
+        return nil
+    }
+    
+    func newReframe(reframeName: String, videoName: String, directory: Directory) throws {
+        
+        guard var fileURL = directory.url else {
+            throw ReframeManagerError.DirectoryNotFound
+        }
+        
+        let fileManager = FileManager.default
+        let ext = FileExtensions["reframe"]!
+        let fileName = "\(videoName).\(reframeName).\(ext)"
+        fileURL.appendPathComponent(fileName)
+        
+        if(fileManager.fileExists(atPath: fileURL.path)) {
+            throw ReframeManagerError.FileAlreadyExists
+        }
+        
+        try ReframeFile.reframeData.write(to: fileURL)
+        let fileItem = try directory.getFileInfo(file: fileName, fileManager: fileManager)
+        directory.addFile(fileItem)
+    }
+    
 }
 
 class Directory: ObservableObject {
@@ -129,6 +207,8 @@ class Directory: ObservableObject {
     @Published var url: URL? { didSet { loadDirectory() }}
     @Published var playerDirURL: URL?
     @Published var videos = [Video360]()
+    
+    var path: String { url?.path ?? "" }
     
     var readable: Bool = false // Can directory be read?
 
@@ -144,13 +224,17 @@ class Directory: ObservableObject {
         let fileItems = loadDir()
         
         for fileItem in fileItems {
-            if videoIndexByName(name: fileItem.videoName) == nil {
-                videos.append(Video360(name: fileItem.videoName))
-            }
-            
-            let i = videoIndexByName(name: fileItem.videoName)
-            videos[i!].addFile(fileItem: fileItem)
+            addFile(fileItem)
         }
+    }
+    
+    func addFile(_ fileItem: FileItem) {
+        if videoIndexByName(name: fileItem.videoName) == nil {
+            videos.append(Video360(name: fileItem.videoName))
+        }
+        
+        let i = videoIndexByName(name: fileItem.videoName)
+        videos[i!].addFile(fileItem: fileItem)
     }
     
     private func videoIndexByName(name: String) -> Int? {
@@ -179,7 +263,6 @@ class Directory: ObservableObject {
                 let fileItem = try getFileInfo(file: file, fileManager: fileManager)
                 
                 if fileItem.isKnownType {
-                    print("Known extension: Append")
                     fileItems.append(fileItem)
                 }
             }
@@ -190,7 +273,7 @@ class Directory: ObservableObject {
         return fileItems
     }
     
-    private func getFileInfo(file: String, fileManager: FileManager) throws -> FileItem {
+    func getFileInfo(file: String, fileManager: FileManager) throws -> FileItem {
         var fileURL = self.url!
         fileURL.appendPathComponent(file)
         

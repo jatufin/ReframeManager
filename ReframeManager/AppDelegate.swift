@@ -12,7 +12,7 @@ import SwiftUI
 let DEFAULT_WIDTH = 800
 let DEFAULT_HEIGHT = 600
 
-let MIN_WIDTH: CGFloat = 400
+let MIN_WIDTH: CGFloat = 600
 let MIN_HEIGHT: CGFloat = 300
 
 @NSApplicationMain
