@@ -14,14 +14,17 @@ struct DirectorySelectorView: View {
     var body: some View {
         VStack {
             HStack {
-                Text(directory.url?.path ?? "<Not selected>")
+                Button(action: openWorkDir) { Text("Open folder") }
+                    
                 Spacer()
-                Button(action: openWorkDir) { Text("Open") }
+                Text(directory.url?.path ?? "<Not selected>")
+                    .font(.subheadline)
             }
             HStack {
-                Text(directory.playerDirURL?.path ?? "<Not selected>")
+                Button(action: openPlayerDir) { Text("Select Player App folder") }
                 Spacer()
-                Button(action: openPlayerDir) { Text("Open") }
+                Text(directory.playerDirURL?.path ?? "<Not selected>")
+                    .font(.subheadline)
             }
         }
     }
@@ -33,7 +36,9 @@ struct DirectorySelectorView: View {
             url = URL(fileURLWithPath: NSString(string: Directory.DEFAULT_WORKDIR).expandingTildeInPath)
         }
         
-        directory.url = selectDirectory(current: url!)
+        if let dir = selectDirectory(current: url!) {
+            directory.url = dir
+        }
     }
      
     func openPlayerDir() {
@@ -43,18 +48,22 @@ struct DirectorySelectorView: View {
             url = URL(fileURLWithPath: NSString(string: Directory.DEFAULT_PLAYERDIR).expandingTildeInPath)
         }
         
-        directory.playerDirURL = selectDirectory(current: url!)
+        if let dir = selectDirectory(current: url!) {
+            directory.playerDirURL = dir
+        }
     }
      
-    func selectDirectory(current: URL) -> URL {
+    func selectDirectory(current: URL) -> URL? {
         print("Current: \(current)")
         let openPanel = NSOpenPanel()
         openPanel.directoryURL = current
         openPanel.canChooseFiles = false
         openPanel.canChooseDirectories = true
         
-        openPanel.runModal()
-       
+        let response = openPanel.runModal()
+        if response == .cancel {
+            return nil
+        }
         return openPanel.url ?? current
     }
 }
