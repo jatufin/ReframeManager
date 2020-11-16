@@ -10,23 +10,22 @@ import SwiftUI
 
 struct VideoListView: View {
     @ObservedObject var directory: Directory
-    
+
     var body: some View {
         VStack {
-            Section(/*header: Text(directory.url?.lastPathComponent ?? "<Not selected>").font(.title)*/) {
-                NavigationView {
-                    List(directory.videos, id: \.self) { video in
-                        //Text(video.name)
-                        
-                        NavigationLink(destination: VideoInfoView(
-                            directory: self.directory, video: video)) {
-                            VideoRowView(video: video)
-                        }
-                        
+            NavigationView {
+                List(directory.videos, id: \.self) { video in
+                    //Text(video.name)
+                    
+                    NavigationLink(destination: VideoInfoView(
+                        directory: self.directory, video: video)
+                    ) {
+                        VideoRowView(video: video)
                     }
-                    .listStyle(SidebarListStyle())
-                    .frame(width: 400)
+                    
                 }
+                .listStyle(SidebarListStyle())
+                .frame(width: 500)
             }
         }
     }

@@ -10,15 +10,21 @@ import Foundation
 import Combine
 
 enum ReframeManagerError: Error {
+    case UnspecifiedError
     case FileAlreadyExists
     case DirectoryNotFound
     case InvalidName
+    case CannotDelete
+    case CannotCreate
+    case EditorLaunchFailure
 }
+
 let FileExtensions = [
     "highDef" : "360",
     "lowDef" : "LRV",
     "preview" : "THM",
-    "reframe" : "reframe"
+    "reframe" : "reframe",
+    "backup" : "BACKUP"
 ]
 
 func validName(name: String) -> Bool {
@@ -39,6 +45,14 @@ func validName(name: String) -> Bool {
     }
     
     if name.contains("~") || name.contains("|") {
+        return false
+    }
+    
+    if name.contains("$") || name.contains("%") {
+        return false
+    }
+    
+    if name.contains("*") || name.contains("?") {
         return false
     }
     
@@ -93,6 +107,8 @@ struct Video360File {
 }
 
 struct ReframeFile: Hashable  {
+
+    /*
     static let REFRAME_TEMPLATE: [UInt8] = [
             0x35, 0x0a, 0x14, 0x0a, 0x2d, 0x0d, 0x6b, 0xa6, 0x15, 0xbc, 0x08, 0xa9, 0x3d, 0x90, 0x8b, 0x1d,
             0x57, 0xa6, 0x25, 0x3a, 0x56, 0xe8, 0x3f, 0x7f, 0x00, 0x15, 0x00, 0x00, 0x18, 0x00, 0x20, 0x04,
@@ -100,6 +116,22 @@ struct ReframeFile: Hashable  {
             0x43, 0x34, 0x00, 0x65, 0x0e, 0xc0, 0x18, 0x43, 0x20, 0x00, 0xd8, 0x80, 0x07, 0xa1, 0x80, 0x28,
             0xa1, 0xd8, 0x30, 0x07, 0x38, 0x10, 0x40, 0x09, 0x00, 0x04
     ]
+
+    static let REFRAME_TEMPLATE: [UInt16] = [
+        0x350a, 0x140a, 0x2d0d, 0x6ba6, 0x15bc, 0x08a9, 0x3d90, 0x8b1d,
+        0x57a6, 0x253a, 0x56e8, 0x3f7f, 0x0015, 0x0000, 0x1800, 0x2004,
+        0x2800, 0x3001, 0x3800, 0x4000, 0x4800, 0x5000, 0x5d00, 0x0000,
+        0x4334, 0x0065, 0x0ec0, 0x1843, 0x2000, 0xd880, 0x07a1, 0x8028,
+        0xa1d8, 0x3007, 0x3810, 0x4009, 0x0004
+    ]
+*/
+    static let REFRAME_TEMPLATE: [UInt16] = [
+        0x350a, 0x140a, 0x2d0d, 0x6ba6, 0x15bc, 0x08a9, 0x3d90, 0x8b1d,
+        0x57a6, 0x253a, 0x56e8, 0x3f7f, 0x0015, 0x0000, 0x1800, 0x2004,
+        0x2800, 0x3001, 0x3800, 0x4000, 0x4800, 0x5000, 0x5d00, 0x0000,
+        0x4334, 0x0065, 0x0ec0, 0x1843, 0x2000, 0xd880, 0x07a1, 0x8028,
+        0xa1d8, 0x3007, 0x3810, 0x4009, 0x0004 ]
+    
     static var reframeData: Data {
         let pointer = UnsafeBufferPointer(
             start: ReframeFile.REFRAME_TEMPLATE,
@@ -178,27 +210,66 @@ class Video360: Hashable, ObservableObject {
         return nil
     }
     
-    func newReframe(reframeName: String, videoName: String, directory: Directory) throws {
-        
+    func newReframe(reframeName: String, directory: Directory) throws {
         guard var fileURL = directory.url else {
             throw ReframeManagerError.DirectoryNotFound
         }
         
+        guard validName(name: reframeName) else {
+            throw ReframeManagerError.InvalidName
+        }
+        
         let fileManager = FileManager.default
         let ext = FileExtensions["reframe"]!
-        let fileName = "\(videoName).\(reframeName).\(ext)"
+        let fileName = "\(self.name).\(reframeName).\(ext)"
+        fileURL.appendPathComponent(fileName)
+        
+        if(fileManager.fileExists(atPath: fileURL.path)) {
+            throw ReframeManagerError.FileAlreadyExists
+        }
+   
+        try ReframeFile.reframeData.write(to: fileURL)
+        
+        let fileItem = try directory.getFileInfo(file: fileName, fileManager: fileManager)
+        directory.addFile(fileItem)
+    }
+    
+    func deleteReframe(reframeFile: ReframeFile) throws {
+        
+        let fileManager = FileManager.default
+        try fileManager.removeItem(at: reframeFile.fileItem.url)
+        
+        if let index = reframeFiles.firstIndex(of: reframeFile) {
+            reframeFiles.remove(at: index)
+        }
+    }
+    
+    func copyReframe(reframeFile: ReframeFile, newName: String, directory: Directory) throws {
+        guard var fileURL = directory.url else {
+            throw ReframeManagerError.DirectoryNotFound
+        }
+        
+        guard validName(name: newName) else {
+            throw ReframeManagerError.InvalidName
+        }
+        
+        
+        let fileManager = FileManager.default
+        let ext = FileExtensions["reframe"]!
+        let fileName = "\(self.name).\(newName).\(ext)"
         fileURL.appendPathComponent(fileName)
         
         if(fileManager.fileExists(atPath: fileURL.path)) {
             throw ReframeManagerError.FileAlreadyExists
         }
         
-        try ReframeFile.reframeData.write(to: fileURL)
+        try fileManager.copyItem(at: reframeFile.fileItem.url, to: fileURL)
+        
         let fileItem = try directory.getFileInfo(file: fileName, fileManager: fileManager)
         directory.addFile(fileItem)
     }
-    
 }
+
 
 class Directory: ObservableObject {
     static let DEFAULT_WORKDIR = "~/Documents/tmp/360Video"
@@ -210,8 +281,6 @@ class Directory: ObservableObject {
     
     var path: String { url?.path ?? "" }
     
-    var readable: Bool = false // Can directory be read?
-
     init(path: String, playerDirPath: String) {
         self.url = URL(fileURLWithPath: NSString(string: path).expandingTildeInPath)
         self.playerDirURL = URL(fileURLWithPath: NSString(string: playerDirPath).expandingTildeInPath)
@@ -220,8 +289,15 @@ class Directory: ObservableObject {
     init() {}
     
     func loadDirectory() {
-        readable = true
-        let fileItems = loadDir()
+        videos = [Video360]()
+        var fileItems: [FileItem]
+        
+        do {
+            fileItems = try loadDir()
+        } catch {
+            print("Problem loading directory")
+            return
+        }
         
         for fileItem in fileItems {
             addFile(fileItem)
@@ -246,9 +322,7 @@ class Directory: ObservableObject {
         return nil
     }
     
-    // If error is encountered reading directory contents
-    // the value of readable member variable is se to false
-    private func loadDir() -> [FileItem] {
+    private func loadDir() throws -> [FileItem] {
         guard url != nil else {
             return [FileItem]()
         }
@@ -256,18 +330,14 @@ class Directory: ObservableObject {
         var fileItems = [FileItem]()
         let fileManager = FileManager.default
         
-        do {
-            let files = try fileManager.contentsOfDirectory(atPath: url!.path)
+        let files = try fileManager.contentsOfDirectory(atPath: url!.path)
             
-            for file in files {
-                let fileItem = try getFileInfo(file: file, fileManager: fileManager)
+        for file in files {
+            let fileItem = try getFileInfo(file: file, fileManager: fileManager)
                 
-                if fileItem.isKnownType {
-                    fileItems.append(fileItem)
-                }
+            if fileItem.isKnownType {
+                fileItems.append(fileItem)
             }
-        } catch {
-            readable = false
         }
         
         return fileItems
@@ -293,4 +363,64 @@ class Directory: ObservableObject {
             type: type
         )
     }
+    
+    func renameVideo(oldName: String, newName: String) throws {
+        guard url != nil else {
+            throw ReframeManagerError.DirectoryNotFound
+        }
+        
+        guard validName(name: newName) else {
+            throw ReframeManagerError.InvalidName
+        }
+        
+        for video in videos {
+            if video.name == newName {
+                throw ReframeManagerError.FileAlreadyExists
+            }
+        }
+        
+        let fileManager = FileManager.default
+        
+        var files = try fileManager.contentsOfDirectory(atPath: url!.path)
+
+        for fileName in files {
+            if !fileName.hasPrefix("\(oldName).") {
+                continue
+            }
+            let restOfFileName = fileName.dropFirst(oldName.count)
+            let newFileName = "\(newName)\(restOfFileName)"
+            
+            var oldFileURL = self.url!
+            var newFileURL = self.url!
+            
+            oldFileURL.appendPathComponent(fileName)
+            newFileURL.appendPathComponent(newFileName)
+            print("Rename '\(oldFileURL.path)' to '\(newFileURL.path)'.")
+            try fileManager.moveItem(at: oldFileURL, to: newFileURL)
+        }
+        
+        // remove Video360 object from array
+        for(index, video) in videos.enumerated() {
+            if video.name == oldName {
+                videos.remove(at: index)
+            }
+        }
+        
+        files = try fileManager.contentsOfDirectory(atPath: url!.path)
+        
+        // re-enter newly named files
+        for file in files {
+            if !file.hasPrefix("\(newName).") {
+                continue
+            }
+            
+            let fileItem = try getFileInfo(file: file, fileManager: fileManager)
+            
+            if fileItem.isKnownType {
+                addFile(fileItem)
+            }
+        }
+        // loadDirectory()
+    }
+    
 }

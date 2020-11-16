@@ -14,6 +14,7 @@ struct ConfirmationView: View {
     @Binding var textValue: String
     var displayTextField: Bool = false
     var okOperation: () -> ()
+    var showCancel = true
     
     @Binding var displayConfirmationSheet: Bool
 
@@ -23,12 +24,12 @@ struct ConfirmationView: View {
                 .font(.title)
                 .padding()
             
+            Text(message)
+                .padding()
+            
             if displayTextField {
                 TextField(textValue, text: $textValue)
             }
-            
-            Text(message)
-                .padding()
             
             HStack {
                 Button("OK") {
@@ -37,10 +38,12 @@ struct ConfirmationView: View {
                 }
                 .padding()
                 
-                Button("Cancel") {
-                    self.displayConfirmationSheet.toggle()
+                if showCancel {
+                    Button("Cancel") {
+                        self.displayConfirmationSheet.toggle()
+                    }
+                    .padding()
                 }
-                .padding()
             }
             .padding()
         }

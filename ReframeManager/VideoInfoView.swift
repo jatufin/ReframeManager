@@ -10,7 +10,7 @@ import SwiftUI
 
 
 struct VideoInfoView: View {
-    var directory: Directory
+    @ObservedObject var directory: Directory
     @ObservedObject var video: Video360
     
     @State var displayErrorAlert = false
@@ -25,9 +25,11 @@ struct VideoInfoView: View {
     @State var confirmationOkOperation: () -> () = {}
     @State var confirmationDisplayTextField = false
     @State var confirmationSelection = false
+    @State var confirmationShowCancel = true
     
     @State var selectedReframe: ReframeFile?
-    @State var newName: String = ""
+    
+    @State var disableView = false
     
     var body: some View {
         VStack {
@@ -55,11 +57,11 @@ struct VideoInfoView: View {
                 .padding()
             
             HStack {
-                TextField("New name", text: $newName).font(.title)
                 Spacer()
-                Button(action: { self.deleteReframe() }) { Text("Delete") }
+                Button(action: { self.renameReframe() }) { Text("Rename") }
                 Button(action: { self.copyReframe() }) { Text("Copy") }
                 Button(action: { self.newReframe() }) { Text("New") }
+                Button(action: { self.deleteReframe() }) { Text("Delete") }
             }
             .padding()
         }
@@ -75,10 +77,13 @@ struct VideoInfoView: View {
                 textValue: self.$confirmationTextValue,
                 displayTextField: self.confirmationDisplayTextField,
                 okOperation: self.confirmationOkOperation,
+                showCancel: self.confirmationShowCancel,
                 displayConfirmationSheet: self.$displayConfirmationSheet
             )
         }
+        .disabled(disableView)
     }
+
     
     func editInPlayer(video360File: Video360File?) {
         print("EDIT")
@@ -91,17 +96,108 @@ struct VideoInfoView: View {
             return
         }
         guard directory.playerDirURL != nil else {
-            errorAlert("Player App directory not selected")
+            errorAlert("Player App directory not selected.")
             return
         }
         
-        print("Edit: \(video360File!.fileItem.name)")
-        print("Reframe: \(selectedReframe!.fileItem.name)")
-        print("Reframe edit file: \(video360File!.reframeEditFileName)")
-        print("Player dir: \(directory.playerDirURL!.path)")
+        guard directory.url != nil else {
+            errorAlert("Directory not selected")
+            return
+        }
+        
+        do {
+            let fileManager = FileManager.default
+            
+            var videoURL = directory.url!
+            videoURL.appendPathComponent(video360File!.fileItem.name)
+            
+            var reframeURL = directory.url!
+            reframeURL.appendPathComponent(selectedReframe!.fileItem.name)
+            
+            var editingURL = directory.playerDirURL!
+            editingURL.appendPathComponent(video360File!.reframeEditFileName)
+            
+            var backupURL = editingURL
+            backupURL.appendPathExtension(FileExtensions["backup"]!)
+            
+            let backUp = fileManager.fileExists(atPath: editingURL.path)
+            
+            if backUp {
+                print("BACKUP")
+                print("From: \(editingURL.path)")
+                print("To: \(backupURL.path)")
+                try fileManager.moveItem(at: editingURL, to: backupURL)
+            }
+
+            print("MOVE")
+            print("From: \(reframeURL.path)")
+            print("To: \(editingURL.path)")
+
+            try fileManager.moveItem(at: reframeURL, to: editingURL)
+            
+            // Launch GoProPlayer
+            NSWorkspace.shared.open(videoURL)
+            
+            print("GoProPlayer.app \(videoURL.path)")
+            
+            confirmationSheet(
+                title: "Player is running",
+                message: "Wait for the Player to exit. Do not select OK before the Player has shut down!",
+                showText: false,
+                showCancel: false,
+                okOperation: {
+                    do {
+                        print("MOVE")
+                        print("From: \(editingURL.path)")
+                        print("To: \(reframeURL.path)")
+                        
+                        try fileManager.moveItem(at: editingURL, to: reframeURL)
+                        
+                        if backUp {
+                            print("RESTORE BACKUP")
+                            print("From: \(backupURL.path)")
+                            print("To: \(editingURL.path)")
+                            try fileManager.moveItem(at: backupURL, to: editingURL)
+                        }
+                    } catch {
+                        self.errorAlert("Error in edit: \(error)")
+                    }
+                }
+            )
+        } catch {
+            errorAlert("Error in edit: \(error)")
+        }
+    }
+    
+    func renameVideo() {
+        let oldName = self.video.name
+        print("Rename: \(oldName)*")
+        
+        print("In directory: \(directory.path)")
+    
+        confirmationSheet(
+            message: "Rename video '\(oldName)' and all accompanying files to:",
+            text: oldName,
+            showText: true,
+            okOperation: {
+                print("Rename \(oldName)* to \(self.confirmationTextValue)*")
+                
+                do {
+                    try self.directory.renameVideo(oldName: oldName, newName: self.confirmationTextValue)
+                } catch {
+                    self.errorAlert("Can't rename '\(oldName)' to '\(self.confirmationTextValue)'.")
+                }
+                self.disableView = true
+            }
+        )
     }
     
     func deleteReframe() {
+        guard selectedReframe != nil else {
+            self.errorAlert("Reframe not selected.")
+            return
+        }
+        
         let s = selectedReframe?.reframeName ?? "<unknown>"
         print("Delete: \(s)")
         print("In directory: \(directory.path)")
@@ -110,57 +206,102 @@ struct VideoInfoView: View {
             message: "Do you relly want to delete '\(s)'?",
             okOperation: {
                 print("Delete: \(s)")
+                
+                do {
+                    
+                    try self.video.deleteReframe(reframeFile: self.selectedReframe!)
+                    
+                } catch {
+                    self.errorAlert("Cant delete reframe '\(s)'")
+                }
             }
         )
     }
     
     func copyReframe() {
-        let s = selectedReframe?.reframeName ?? ""
-        print("Copy: \(s)")
-        print("To: \(newName)")
+        guard selectedReframe != nil else {
+            self.errorAlert("Reframe not selected.")
+            return
+        }
+        
+        let oldName = selectedReframe?.reframeName ?? ""
+        print("Copy: \(oldName)")
+        
         print("In directory: \(directory.path)")
     
         confirmationSheet(
-            message: "Copy '\(s)' to new name:",
-            text: s,
+            message: "Copy '\(oldName)' to new name:",
+            text: oldName,
             showText: true,
             okOperation: {
-                print("Copy \(s) to \(self.confirmationTextValue)")
+                print("Copy \(oldName) to \(self.confirmationTextValue)")
+                
+                do {
+                    
+                    try self.video.copyReframe(reframeFile: self.selectedReframe!,
+                                               newName: self.confirmationTextValue,
+                                               directory: self.directory)
+                    
+                } catch {
+                    self.errorAlert("Can't copy '\(oldName)' to '\(self.confirmationTextValue)'.")
+                }
             }
         )
     }
     
     func newReframe() {
-        let s = selectedReframe?.reframeName ?? ""
-        print("Create: \(newName)")
+        let oldName = selectedReframe?.reframeName ?? ""
+        // print("Create: \(newName)")
         print("In directory: \(directory.path)")
   
         confirmationSheet(
             message: "Create a new reframe file.",
-            text: s,
+            text: oldName,
             showText: true,
             okOperation: {
                 print("Create a new reframe: \(self.confirmationTextValue)")
                 
                 do {
-                    try self.video.newReframe(reframeName: self.confirmationTextValue, videoName: self.video.name, directory: self.directory)
+                    
+                    try self.video.newReframe(reframeName: self.confirmationTextValue,
+                                              directory: self.directory)
+                    
                 } catch {
-                    self.errorAlert("Can't create new reframe '\(self.confirmationTextValue)'")
+                    self.errorAlert("Can't create new reframe '\(self.confirmationTextValue)'.")
                 }
             }
         )
-        
-        
     }
     
-    func renameVideo() {
-        let s = video.name
+    func renameReframe() {
+        guard selectedReframe != nil else {
+            self.errorAlert("Reframe not selected.")
+            return
+        }
+        
+        let oldName = selectedReframe?.reframeName ?? ""
+        print("Copy: \(oldName)")
+        
+        print("In directory: \(directory.path)")
+    
         confirmationSheet(
-            message: "Rename '\(s)' and all its associated files to new name:",
-            text: s,
+            message: "Rename '\(oldName)' to new name:",
+            text: oldName,
             showText: true,
             okOperation: {
-                print("Rename \(s) to \(self.confirmationTextValue)")
+                print("Copy \(oldName) to \(self.confirmationTextValue)")
+                
+                do {
+                    
+                    try self.video.copyReframe(reframeFile: self.selectedReframe!,
+                                               newName: self.confirmationTextValue,
+                                               directory: self.directory)
+                    
+                    try self.video.deleteReframe(reframeFile: self.selectedReframe!)
+                    
+                } catch {
+                    self.errorAlert("Can't rename '\(oldName)' to '\(self.confirmationTextValue)'.")
+                }
             }
         )
     }
@@ -176,11 +317,13 @@ struct VideoInfoView: View {
                            message: String,
                            text: String = "",
                            showText: Bool = false,
+                           showCancel: Bool = true,
                            okOperation: @escaping () -> ()) {
         confirmationTitle = title
         confirmationMessage = message
         confirmationTextValue = text
         confirmationDisplayTextField = showText
+        confirmationShowCancel = showCancel
         confirmationOkOperation = okOperation
         
         displayConfirmationSheet = true
@@ -196,7 +339,7 @@ struct ReframeListView: View {
             NavigationView {
                 List(reframeFiles, id: \.self, selection: $selectedReframe) { reframeFile in
                         Text(reframeFile.reframeName)
-                            .font(.title)
+                            .font(.headline)
                 }
             }
         }
