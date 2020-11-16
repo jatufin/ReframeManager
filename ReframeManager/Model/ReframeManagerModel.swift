@@ -27,6 +27,8 @@ let FileExtensions = [
     "backup" : "BACKUP"
 ]
 
+let DEFAULT_REFRAME_NAME = "Unknown"
+
 func validName(name: String) -> Bool {
     if name.count == 0 || name.count > 50 {
         return false
@@ -106,40 +108,7 @@ struct Video360File {
     }
 }
 
-struct ReframeFile: Hashable  {
-
-    /*
-    static let REFRAME_TEMPLATE: [UInt8] = [
-            0x35, 0x0a, 0x14, 0x0a, 0x2d, 0x0d, 0x6b, 0xa6, 0x15, 0xbc, 0x08, 0xa9, 0x3d, 0x90, 0x8b, 0x1d,
-            0x57, 0xa6, 0x25, 0x3a, 0x56, 0xe8, 0x3f, 0x7f, 0x00, 0x15, 0x00, 0x00, 0x18, 0x00, 0x20, 0x04,
-            0x28, 0x00, 0x30, 0x01, 0x38, 0x00, 0x40, 0x00, 0x48, 0x00, 0x50, 0x00, 0x5d, 0x00, 0x00, 0x00,
-            0x43, 0x34, 0x00, 0x65, 0x0e, 0xc0, 0x18, 0x43, 0x20, 0x00, 0xd8, 0x80, 0x07, 0xa1, 0x80, 0x28,
-            0xa1, 0xd8, 0x30, 0x07, 0x38, 0x10, 0x40, 0x09, 0x00, 0x04
-    ]
-
-    static let REFRAME_TEMPLATE: [UInt16] = [
-        0x350a, 0x140a, 0x2d0d, 0x6ba6, 0x15bc, 0x08a9, 0x3d90, 0x8b1d,
-        0x57a6, 0x253a, 0x56e8, 0x3f7f, 0x0015, 0x0000, 0x1800, 0x2004,
-        0x2800, 0x3001, 0x3800, 0x4000, 0x4800, 0x5000, 0x5d00, 0x0000,
-        0x4334, 0x0065, 0x0ec0, 0x1843, 0x2000, 0xd880, 0x07a1, 0x8028,
-        0xa1d8, 0x3007, 0x3810, 0x4009, 0x0004
-    ]
-*/
-    static let REFRAME_TEMPLATE: [UInt16] = [
-        0x350a, 0x140a, 0x2d0d, 0x6ba6, 0x15bc, 0x08a9, 0x3d90, 0x8b1d,
-        0x57a6, 0x253a, 0x56e8, 0x3f7f, 0x0015, 0x0000, 0x1800, 0x2004,
-        0x2800, 0x3001, 0x3800, 0x4000, 0x4800, 0x5000, 0x5d00, 0x0000,
-        0x4334, 0x0065, 0x0ec0, 0x1843, 0x2000, 0xd880, 0x07a1, 0x8028,
-        0xa1d8, 0x3007, 0x3810, 0x4009, 0x0004 ]
-    
-    static var reframeData: Data {
-        let pointer = UnsafeBufferPointer(
-            start: ReframeFile.REFRAME_TEMPLATE,
-            count: ReframeFile.REFRAME_TEMPLATE.count)
-        
-        return Data(buffer: pointer)
-    }
-    
+struct ReframeFile: Hashable  {   
     var fileItem: FileItem
     
     // Part of the file name between the first and last dots
@@ -210,30 +179,83 @@ class Video360: Hashable, ObservableObject {
         return nil
     }
     
-    func newReframe(reframeName: String, directory: Directory) throws {
-        guard var fileURL = directory.url else {
-            throw ReframeManagerError.DirectoryNotFound
-        }
-        
+    // Add a reframe file to the list
+    func addReframeFile(reframeName: String, directory: Directory) throws {
         guard validName(name: reframeName) else {
             throw ReframeManagerError.InvalidName
         }
         
-        let fileManager = FileManager.default
-        let ext = FileExtensions["reframe"]!
-        let fileName = "\(self.name).\(reframeName).\(ext)"
-        fileURL.appendPathComponent(fileName)
+        let fileURL = try newReframeFileURL(name: reframeName, directory: directory)
         
-        if(fileManager.fileExists(atPath: fileURL.path)) {
-            throw ReframeManagerError.FileAlreadyExists
-        }
-   
-        try ReframeFile.reframeData.write(to: fileURL)
-        
-        let fileItem = try directory.getFileInfo(file: fileName, fileManager: fileManager)
-        directory.addFile(fileItem)
+        try addReframeFile(fileURL: fileURL, directory: directory)
     }
     
+    // Add a reframe file to the list
+    func addReframeFile(fileURL: URL, directory: Directory) throws {
+            let fileManager = FileManager.default
+            let fileItem = try directory.getFileInfo(file: fileURL.lastPathComponent, fileManager: fileManager)
+            
+            directory.addFile(fileItem)
+    }
+    
+    // Generate valid file name
+    func newReframeFileName(name: String) throws -> String {
+        guard validName(name: name) else {
+            throw ReframeManagerError.InvalidName
+        }
+        
+        for reframeFile in reframeFiles {
+            if reframeFile.reframeName == name {
+                throw ReframeManagerError.FileAlreadyExists
+            }
+        }
+        
+        let ext = FileExtensions["reframe"]!
+        let fileName = "\(self.name).\(name).\(ext)"
+        
+        return fileName
+    }
+    
+    // Generate valid file URL
+    func newReframeFileURL(name: String, directory: Directory) throws -> URL {
+        guard var fileURL = directory.url else {
+            throw ReframeManagerError.DirectoryNotFound
+        }
+        
+        let fileName = try newReframeFileName(name: name)
+            
+        fileURL.appendPathComponent(fileName)
+        
+        let fileManager = FileManager.default
+        
+        if fileManager.fileExists(atPath: fileURL.path) {
+            throw ReframeManagerError.FileAlreadyExists
+        }
+        
+        return fileURL
+    }
+    
+    // Create automatically reframe file with given prefix: "MyReframe 1",
+    // "MyReframe 2" etc.
+    func newReframeFileURL(prefix: String, directory: Directory, automatic: Bool) -> URL {
+        var fileURL = URL(fileURLWithPath: "")
+        
+        for i in 1...10000000 {
+            let reframeName = "\(prefix) \(i)"
+            
+            do {
+                fileURL = try newReframeFileURL(name: reframeName,
+                                                directory: directory)
+                break
+            } catch {
+                continue
+            }
+        }
+        
+        return fileURL
+    }
+    
+    // Remove a reframe file
     func deleteReframe(reframeFile: ReframeFile) throws {
         
         let fileManager = FileManager.default

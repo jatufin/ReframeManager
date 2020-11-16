@@ -45,14 +45,6 @@ struct VideoInfoView: View {
             Button(action: { self.editInPlayer(video360File: self.video.lowDef360File) }) {
             Text("Edit Low Definition") }
             
-            /*
-            Text(video.highDef360File?.fileItem.name ?? "Not found")
-            Text(video.highDef360File?.reframeEditFileName ?? "Not found")
-            
-            Text(video.lowDef360File?.fileItem.name ?? "Not found")
-            Text(video.lowDef360File?.reframeEditFileName ?? "Not found")
-            */
-            
             ReframeListView(reframeFiles: video.reframeFiles, selectedReframe: $selectedReframe)
                 .padding()
             
@@ -60,7 +52,6 @@ struct VideoInfoView: View {
                 Spacer()
                 Button(action: { self.renameReframe() }) { Text("Rename") }
                 Button(action: { self.copyReframe() }) { Text("Copy") }
-                Button(action: { self.newReframe() }) { Text("New") }
                 Button(action: { self.deleteReframe() }) { Text("Delete") }
             }
             .padding()
@@ -91,10 +82,7 @@ struct VideoInfoView: View {
             errorAlert("Video file missing")
             return
         }
-        guard selectedReframe != nil else {
-            errorAlert("Reframe not selected")
-            return
-        }
+
         guard directory.playerDirURL != nil else {
             errorAlert("Player App directory not selected.")
             return
@@ -111,8 +99,6 @@ struct VideoInfoView: View {
             var videoURL = directory.url!
             videoURL.appendPathComponent(video360File!.fileItem.name)
             
-            var reframeURL = directory.url!
-            reframeURL.appendPathComponent(selectedReframe!.fileItem.name)
             
             var editingURL = directory.playerDirURL!
             editingURL.appendPathComponent(video360File!.reframeEditFileName)
@@ -123,22 +109,21 @@ struct VideoInfoView: View {
             let backUp = fileManager.fileExists(atPath: editingURL.path)
             
             if backUp {
-                print("BACKUP")
-                print("From: \(editingURL.path)")
-                print("To: \(backupURL.path)")
                 try fileManager.moveItem(at: editingURL, to: backupURL)
             }
 
-            print("MOVE")
-            print("From: \(reframeURL.path)")
-            print("To: \(editingURL.path)")
-
-            try fileManager.moveItem(at: reframeURL, to: editingURL)
+            var reframeURL = directory.url!
+            if selectedReframe != nil {
+                reframeURL.appendPathComponent(selectedReframe!.fileItem.name)
+                try fileManager.moveItem(at: reframeURL, to: editingURL)
+            } else {
+                // Just generating file name for new reframe
+                // Player App should create the actual file
+                reframeURL = video.newReframeFileURL(prefix: DEFAULT_REFRAME_NAME, directory: directory, automatic: true)
+            }
             
             // Launch GoProPlayer
             NSWorkspace.shared.open(videoURL)
-            
-            print("GoProPlayer.app \(videoURL.path)")
             
             confirmationSheet(
                 title: "Player is running",
@@ -147,16 +132,13 @@ struct VideoInfoView: View {
                 showCancel: false,
                 okOperation: {
                     do {
-                        print("MOVE")
-                        print("From: \(editingURL.path)")
-                        print("To: \(reframeURL.path)")
-                        
                         try fileManager.moveItem(at: editingURL, to: reframeURL)
                         
+                        if self.selectedReframe == nil {
+                            try self.video.addReframeFile(fileURL: reframeURL,
+                                                          directory: self.directory)
+                        }
                         if backUp {
-                            print("RESTORE BACKUP")
-                            print("From: \(backupURL.path)")
-                            print("To: \(editingURL.path)")
                             try fileManager.moveItem(at: backupURL, to: editingURL)
                         }
                     } catch {
@@ -171,17 +153,12 @@ struct VideoInfoView: View {
     
     func renameVideo() {
         let oldName = self.video.name
-        print("Rename: \(oldName)*")
-        
-        print("In directory: \(directory.path)")
-    
+ 
         confirmationSheet(
             message: "Rename video '\(oldName)' and all accompanying files to:",
             text: oldName,
             showText: true,
             okOperation: {
-                print("Rename \(oldName)* to \(self.confirmationTextValue)*")
-                
                 do {
                     try self.directory.renameVideo(oldName: oldName, newName: self.confirmationTextValue)
                 } catch {
@@ -199,9 +176,7 @@ struct VideoInfoView: View {
         }
         
         let s = selectedReframe?.reframeName ?? "<unknown>"
-        print("Delete: \(s)")
-        print("In directory: \(directory.path)")
-        
+      
         confirmationSheet(
             message: "Do you relly want to delete '\(s)'?",
             okOperation: {
@@ -210,6 +185,7 @@ struct VideoInfoView: View {
                 do {
                     
                     try self.video.deleteReframe(reframeFile: self.selectedReframe!)
+                    self.selectedReframe = nil
                     
                 } catch {
                     self.errorAlert("Cant delete reframe '\(s)'")
@@ -225,10 +201,7 @@ struct VideoInfoView: View {
         }
         
         let oldName = selectedReframe?.reframeName ?? ""
-        print("Copy: \(oldName)")
-        
-        print("In directory: \(directory.path)")
-    
+ 
         confirmationSheet(
             message: "Copy '\(oldName)' to new name:",
             text: oldName,
@@ -244,30 +217,6 @@ struct VideoInfoView: View {
                     
                 } catch {
                     self.errorAlert("Can't copy '\(oldName)' to '\(self.confirmationTextValue)'.")
-                }
-            }
-        )
-    }
-    
-    func newReframe() {
-        let oldName = selectedReframe?.reframeName ?? ""
-        // print("Create: \(newName)")
-        print("In directory: \(directory.path)")
-  
-        confirmationSheet(
-            message: "Create a new reframe file.",
-            text: oldName,
-            showText: true,
-            okOperation: {
-                print("Create a new reframe: \(self.confirmationTextValue)")
-                
-                do {
-                    
-                    try self.video.newReframe(reframeName: self.confirmationTextValue,
-                                              directory: self.directory)
-                    
-                } catch {
-                    self.errorAlert("Can't create new reframe '\(self.confirmationTextValue)'.")
                 }
             }
         )
