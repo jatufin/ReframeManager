@@ -30,30 +30,35 @@ struct DirectorySelectorView: View {
     }
     
     func openWorkDir() {
-        var url = directory.playerDirURL
+        DirectorySelectorView.openWorkDir(directory)
+    }
+    
+    static func openWorkDir(_ directory: Directory) {
+
+        let url = UserDefaults.standard.url(forKey: Directory.WORKDIR_KEY)
         
-        if url == nil {
-            url = URL(fileURLWithPath: NSString(string: Directory.DEFAULT_WORKDIR).expandingTildeInPath)
-        }
-        
-        if let dir = selectDirectory(current: url!) {
+        if let dir = DirectorySelectorView.selectDirectory(current: url!) {
+            UserDefaults.standard.set(dir, forKey: Directory.WORKDIR_KEY)
             directory.url = dir
         }
     }
-     
+    
     func openPlayerDir() {
-        var url = directory.playerDirURL
+        DirectorySelectorView.openPlayerDir(directory)
+    }
+    
+    static func openPlayerDir(_ directory: Directory) {
+
+        let url = UserDefaults.standard.url(forKey: Directory.PLAYERDIR_KEY)
         
-        if url == nil {
-            url = URL(fileURLWithPath: NSString(string: Directory.DEFAULT_PLAYERDIR).expandingTildeInPath)
-        }
-        
-        if let dir = selectDirectory(current: url!) {
+        if let dir = DirectorySelectorView.selectDirectory(current: url!) {
+            UserDefaults.standard.set(dir, forKey: Directory.WORKDIR_KEY)
             directory.playerDirURL = dir
         }
     }
-     
-    func selectDirectory(current: URL) -> URL? {
+    static func foo() { print("Foo!") }
+    
+    static func selectDirectory(current: URL) -> URL? {
         print("Current: \(current)")
         let openPanel = NSOpenPanel()
         openPanel.directoryURL = current

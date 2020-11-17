@@ -108,7 +108,7 @@ struct Video360File {
     }
 }
 
-struct ReframeFile: Hashable  {   
+struct ReframeFile: Hashable  {
     var fileItem: FileItem
     
     // Part of the file name between the first and last dots
@@ -294,21 +294,30 @@ class Video360: Hashable, ObservableObject {
 
 
 class Directory: ObservableObject {
-    static let DEFAULT_WORKDIR = "~/Documents/tmp/360Video"
-    static let DEFAULT_PLAYERDIR = "~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support/"
-    
+    static let WORKDIR_KEY = "workdir"
+    private let DEFAULT_WORKDIR = "~/Documents/"
+    static let PLAYERDIR_KEY = "playerdir"
+    private let DEFAULT_PLAYERDIR = "~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support/"
+
     @Published var url: URL? { didSet { loadDirectory() }}
     @Published var playerDirURL: URL?
     @Published var videos = [Video360]()
     
     var path: String { url?.path ?? "" }
     
-    init(path: String, playerDirPath: String) {
-        self.url = URL(fileURLWithPath: NSString(string: path).expandingTildeInPath)
-        self.playerDirURL = URL(fileURLWithPath: NSString(string: playerDirPath).expandingTildeInPath)
+    init() {
+        
+        if UserDefaults.standard.url(forKey: Directory.WORKDIR_KEY) == nil {
+            let workDirURL = URL(fileURLWithPath: NSString(string: DEFAULT_WORKDIR).expandingTildeInPath)
+            UserDefaults.standard.set(workDirURL, forKey: Directory.WORKDIR_KEY)
+        }
+        
+        if UserDefaults.standard.url(forKey: Directory.PLAYERDIR_KEY) == nil {
+            let playerDirURL = URL(fileURLWithPath: NSString(string: DEFAULT_PLAYERDIR).expandingTildeInPath)
+            UserDefaults.standard.set(playerDirURL, forKey: Directory.PLAYERDIR_KEY)
+        }
+        
     }
-    
-    init() {}
     
     func loadDirectory() {
         videos = [Video360]()

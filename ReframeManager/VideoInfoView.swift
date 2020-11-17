@@ -54,6 +54,7 @@ struct VideoInfoView: View {
                 Button(action: { self.copyReframe() }) { Text("Copy") }
                 Button(action: { self.deleteReframe() }) { Text("Delete") }
             }
+            .disabled(selectedReframe == nil)
             .padding()
         }
         .alert(isPresented: $displayErrorAlert) {
