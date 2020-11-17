@@ -78,7 +78,7 @@ struct VideoInfoView: View {
 
     
     func editInPlayer(video360File: Video360File?) {
-        print("EDIT")
+        
         guard video360File != nil else {
             errorAlert("Video file missing")
             return
@@ -89,7 +89,7 @@ struct VideoInfoView: View {
             return
         }
         
-        guard directory.url != nil else {
+        guard directory.videoDirURL != nil else {
             errorAlert("Directory not selected")
             return
         }
@@ -97,7 +97,7 @@ struct VideoInfoView: View {
         do {
             let fileManager = FileManager.default
             
-            var videoURL = directory.url!
+            var videoURL = directory.videoDirURL!
             videoURL.appendPathComponent(video360File!.fileItem.name)
             
             
@@ -113,7 +113,7 @@ struct VideoInfoView: View {
                 try fileManager.moveItem(at: editingURL, to: backupURL)
             }
 
-            var reframeURL = directory.url!
+            var reframeURL = directory.videoDirURL!
             if selectedReframe != nil {
                 reframeURL.appendPathComponent(selectedReframe!.fileItem.name)
                 try fileManager.moveItem(at: reframeURL, to: editingURL)
@@ -181,8 +181,6 @@ struct VideoInfoView: View {
         confirmationSheet(
             message: "Do you relly want to delete '\(s)'?",
             okOperation: {
-                print("Delete: \(s)")
-                
                 do {
                     
                     try self.video.deleteReframe(reframeFile: self.selectedReframe!)
@@ -208,7 +206,6 @@ struct VideoInfoView: View {
             text: oldName,
             showText: true,
             okOperation: {
-                print("Copy \(oldName) to \(self.confirmationTextValue)")
                 
                 do {
                     
@@ -230,16 +227,12 @@ struct VideoInfoView: View {
         }
         
         let oldName = selectedReframe?.reframeName ?? ""
-        print("Copy: \(oldName)")
-        
-        print("In directory: \(directory.path)")
     
         confirmationSheet(
             message: "Rename '\(oldName)' to new name:",
             text: oldName,
             showText: true,
             okOperation: {
-                print("Copy \(oldName) to \(self.confirmationTextValue)")
                 
                 do {
                     

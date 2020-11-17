@@ -17,7 +17,7 @@ struct DirectorySelectorView: View {
                 Button(action: openWorkDir) { Text("Open folder") }
                     
                 Spacer()
-                Text(directory.url?.path ?? "<Not selected>")
+                Text(directory.videoDirURL?.path ?? "<Not selected>")
                     .font(.subheadline)
             }
             HStack {
@@ -39,7 +39,9 @@ struct DirectorySelectorView: View {
         
         if let dir = DirectorySelectorView.selectDirectory(current: url!) {
             UserDefaults.standard.set(dir, forKey: Directory.WORKDIR_KEY)
-            directory.url = dir
+            
+            directory.storeSecureBookmark(url: dir, key: Directory.WORKDIR_BOOKMARK_KEY)
+            directory.videoDirURL = dir
         }
     }
     
@@ -52,14 +54,14 @@ struct DirectorySelectorView: View {
         let url = UserDefaults.standard.url(forKey: Directory.PLAYERDIR_KEY)
         
         if let dir = DirectorySelectorView.selectDirectory(current: url!) {
-            UserDefaults.standard.set(dir, forKey: Directory.WORKDIR_KEY)
+            UserDefaults.standard.set(dir, forKey: Directory.PLAYERDIR_KEY)
+            
+            directory.storeSecureBookmark(url: dir, key: Directory.PLAYERDIR_BOOKMARK_KEY)
             directory.playerDirURL = dir
         }
     }
-    static func foo() { print("Foo!") }
     
     static func selectDirectory(current: URL) -> URL? {
-        print("Current: \(current)")
         let openPanel = NSOpenPanel()
         openPanel.directoryURL = current
         openPanel.canChooseFiles = false

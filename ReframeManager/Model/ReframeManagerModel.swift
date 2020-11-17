@@ -151,7 +151,6 @@ class Video360: Hashable, ObservableObject {
             case FileExtensions["preview"]:
                 previewImageFile = fileItem
             case FileExtensions["reframe"]:
-                print("Add reframe: \(fileItem.name)")
                 reframeFiles.append(ReframeFile(fileItem: fileItem))
         default:
             otherFiles.append(fileItem)
@@ -218,7 +217,7 @@ class Video360: Hashable, ObservableObject {
     
     // Generate valid file URL
     func newReframeFileURL(name: String, directory: Directory) throws -> URL {
-        guard var fileURL = directory.url else {
+        guard var fileURL = directory.videoDirURL else {
             throw ReframeManagerError.DirectoryNotFound
         }
         
@@ -267,7 +266,7 @@ class Video360: Hashable, ObservableObject {
     }
     
     func copyReframe(reframeFile: ReframeFile, newName: String, directory: Directory) throws {
-        guard var fileURL = directory.url else {
+        guard var fileURL = directory.videoDirURL else {
             throw ReframeManagerError.DirectoryNotFound
         }
         
@@ -292,21 +291,30 @@ class Video360: Hashable, ObservableObject {
     }
 }
 
-
 class Directory: ObservableObject {
+
+    // Two directories are stored in UserDefaults: current working
+    // directory, and directory of Player Bundle
+    // Both are stored in two ways: The direct URL and secure scoped
+    // bookmark. The latter allows us to open the directories again
+    // in sandboxed environment
     static let WORKDIR_KEY = "workdir"
+    static let WORKDIR_BOOKMARK_KEY = "workdirBM"
     private let DEFAULT_WORKDIR = "~/Documents/"
+
     static let PLAYERDIR_KEY = "playerdir"
+    static let PLAYERDIR_BOOKMARK_KEY = "playerdirBM"
     private let DEFAULT_PLAYERDIR = "~/Library/Containers/com.gopro.GoPro-Player/Data/Library/Application Support/"
 
-    @Published var url: URL? { didSet { loadDirectory() }}
+    @Published var videoDirURL: URL? { didSet { loadDirectory() }}
     @Published var playerDirURL: URL?
     @Published var videos = [Video360]()
     
-    var path: String { url?.path ?? "" }
+    var path: String { videoDirURL?.path ?? "" }
     
     init() {
         
+        // Set stored URL:s to set constants, if they were not set
         if UserDefaults.standard.url(forKey: Directory.WORKDIR_KEY) == nil {
             let workDirURL = URL(fileURLWithPath: NSString(string: DEFAULT_WORKDIR).expandingTildeInPath)
             UserDefaults.standard.set(workDirURL, forKey: Directory.WORKDIR_KEY)
@@ -317,6 +325,48 @@ class Directory: ObservableObject {
             UserDefaults.standard.set(playerDirURL, forKey: Directory.PLAYERDIR_KEY)
         }
         
+        // try to open stored secure bookmarks
+        videoDirURL = openSecureBookmark(key: Directory.WORKDIR_BOOKMARK_KEY)
+        playerDirURL = openSecureBookmark(key: Directory.PLAYERDIR_BOOKMARK_KEY)
+    }
+    
+    func storeSecureBookmark(url: URL, key: String) {
+        var data: Data = Data()
+        do {
+            data = try url.bookmarkData(options: .withSecurityScope,
+                                        includingResourceValuesForKeys: nil,
+                                        relativeTo: nil)
+        } catch {
+            return
+        }
+
+        _ = url.startAccessingSecurityScopedResource()
+        
+        UserDefaults.standard.set(data, forKey: key)
+    }
+    
+    func openSecureBookmark(key: String) -> URL? {
+        
+        guard let data = UserDefaults.standard.data(forKey: key) else {
+            
+            return nil
+        }
+        var returnURL = URL(fileURLWithPath: "")
+        var isStale = false
+        
+        do {
+            returnURL = try URL(resolvingBookmarkData: data,
+                                options: .withSecurityScope,
+                                relativeTo: nil,
+                                bookmarkDataIsStale: &isStale)
+        
+        } catch {
+            return nil
+        }
+        
+        _ = returnURL.startAccessingSecurityScopedResource()
+        
+        return returnURL
     }
     
     func loadDirectory() {
@@ -326,7 +376,6 @@ class Directory: ObservableObject {
         do {
             fileItems = try loadDir()
         } catch {
-            print("Problem loading directory")
             return
         }
         
@@ -354,14 +403,14 @@ class Directory: ObservableObject {
     }
     
     private func loadDir() throws -> [FileItem] {
-        guard url != nil else {
+        guard videoDirURL != nil else {
             return [FileItem]()
         }
         
         var fileItems = [FileItem]()
         let fileManager = FileManager.default
         
-        let files = try fileManager.contentsOfDirectory(atPath: url!.path)
+        let files = try fileManager.contentsOfDirectory(atPath: videoDirURL!.path)
             
         for file in files {
             let fileItem = try getFileInfo(file: file, fileManager: fileManager)
@@ -375,7 +424,7 @@ class Directory: ObservableObject {
     }
     
     func getFileInfo(file: String, fileManager: FileManager) throws -> FileItem {
-        var fileURL = self.url!
+        var fileURL = self.videoDirURL!
         fileURL.appendPathComponent(file)
         
         let attributes = try fileManager.attributesOfItem(atPath: fileURL.path)
@@ -396,7 +445,7 @@ class Directory: ObservableObject {
     }
     
     func renameVideo(oldName: String, newName: String) throws {
-        guard url != nil else {
+        guard videoDirURL != nil else {
             throw ReframeManagerError.DirectoryNotFound
         }
         
@@ -412,7 +461,7 @@ class Directory: ObservableObject {
         
         let fileManager = FileManager.default
         
-        var files = try fileManager.contentsOfDirectory(atPath: url!.path)
+        var files = try fileManager.contentsOfDirectory(atPath: videoDirURL!.path)
 
         for fileName in files {
             if !fileName.hasPrefix("\(oldName).") {
@@ -421,12 +470,11 @@ class Directory: ObservableObject {
             let restOfFileName = fileName.dropFirst(oldName.count)
             let newFileName = "\(newName)\(restOfFileName)"
             
-            var oldFileURL = self.url!
-            var newFileURL = self.url!
+            var oldFileURL = self.videoDirURL!
+            var newFileURL = self.videoDirURL!
             
             oldFileURL.appendPathComponent(fileName)
             newFileURL.appendPathComponent(newFileName)
-            print("Rename '\(oldFileURL.path)' to '\(newFileURL.path)'.")
             try fileManager.moveItem(at: oldFileURL, to: newFileURL)
         }
         
@@ -437,7 +485,7 @@ class Directory: ObservableObject {
             }
         }
         
-        files = try fileManager.contentsOfDirectory(atPath: url!.path)
+        files = try fileManager.contentsOfDirectory(atPath: videoDirURL!.path)
         
         // re-enter newly named files
         for file in files {
