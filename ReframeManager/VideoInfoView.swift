@@ -37,6 +37,9 @@ struct VideoInfoView: View {
                 Text(video.name).font(.largeTitle)
                 Button(action: renameVideo) { Text("Rename") }
             }
+            
+            Text(video.timeStamp)
+            
             PreviewImageView(width: 300, url: video.previewImageFile?.url ?? nil)
             
             Button(action: { self.editInPlayer(video360File: self.video.highDef360File) }) {

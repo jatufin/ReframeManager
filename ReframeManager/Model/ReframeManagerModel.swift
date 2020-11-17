@@ -138,6 +138,18 @@ class Video360: Hashable, Comparable, ObservableObject {
     @Published var reframeFiles = [ReframeFile]()
     var otherFiles = [FileItem]()       // normally this should remain empty
     
+    var timeStamp: String {
+        if highDef360File != nil {
+            return highDef360File!.creationTimeStamp
+        }
+        
+        if lowDef360File != nil {
+            return lowDef360File!.creationTimeStamp
+        }
+        
+        return "--/--/--"
+    }
+    
     init(name: String) {
         self.name = name
     }
