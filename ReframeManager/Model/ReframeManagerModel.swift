@@ -128,7 +128,7 @@ struct ReframeFile: Hashable  {
     }
 }
 
-class Video360: Hashable, ObservableObject {
+class Video360: Hashable, Comparable, ObservableObject {
     var name: String
     var previewImageFile: FileItem?
     
@@ -163,6 +163,10 @@ class Video360: Hashable, ObservableObject {
    
     static func == (lhs: Video360, rhs: Video360) -> Bool {
         return lhs.name == rhs.name
+    }
+    
+    static func < (lhs: Video360, rhs: Video360) -> Bool {
+        lhs.name < rhs.name
     }
     
     func reframeExists(name: String) -> Bool {

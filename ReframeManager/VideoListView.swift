@@ -14,7 +14,7 @@ struct VideoListView: View {
     var body: some View {
         VStack {
             NavigationView {
-                List(directory.videos, id: \.self) { video in
+                List(directory.videos.sorted(), id: \.self) { video in
                     //Text(video.name)
                     
                     NavigationLink(destination: VideoInfoView(
