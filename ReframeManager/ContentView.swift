@@ -28,4 +28,10 @@ struct ContentView_Previews: PreviewProvider {
     }
 }
 
-
+struct CustomButtonStyle: ButtonStyle {
+    func makeBody(configuration: Self.Configuration) -> some View {
+        configuration.label
+            .foregroundColor(Color.Red)
+    }
+    
+}
